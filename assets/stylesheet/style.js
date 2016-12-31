@@ -37,12 +37,16 @@ module.exports = {
     height: 240
   },
   rowItem: {
-    borderColor: '#ededed',
-    borderBottomWidth: 1,
-    paddingTop: 10,
-    paddingBottom: 10,
-    paddingLeft: 5
-  },
+    alignItems: 'center',
+		backgroundColor: '#fff',
+		borderBottomColor: '#ededed',
+		borderBottomWidth: 1,
+    justifyContent: 'flex-start',
+		height: 40,
+		paddingLeft: 3,
+		flex: 1,
+		flexDirection: 'row'
+},
   ft:{
     flexDirection: 'row',
     justifyContent: 'space-between',

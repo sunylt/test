@@ -10,56 +10,26 @@ import {
   Image
 } from 'react-native';
 
-import Icon from 'react-native-vector-icons/FontAwesome';
+import Icon from 'react-native-vector-icons/Ionicons';
 import Storage from 'react-native-storage';
 import { SwipeListView } from 'react-native-swipe-list-view';
 import Style from '../stylesheet/style';
 
-
-var storage = new Storage({
-    size: 1000,
-    storageBackend: AsyncStorage,
-    defaultExpires: 1000 * 3600 * 24,
-    enableCache: true,
-    sync : {
-    }
+let storage = new Storage({
+  size: 1000,
+  storageBackend: AsyncStorage,
+  defaultExpires: 1000 * 3600 * 24,
+  enableCache: true,
+  sync : {}
 });
-
-/*
-storage.save({
-    key: 'todos',   // Note: Do not use underscore("_") in key!
-    id: 10001,
-    rawData: {'id': 10001, 'item': '写一篇React Native文章', 'done': false},
-    expires: null
-});
-
-storage.save({
-    key: 'todos',   // Note: Do not use underscore("_") in key!
-    id: 10002,
-    rawData: {'id': 10002, 'item': '周末回家，记得去银行取钱', 'done': true},
-    expires: null
-});
-
-storage.save({
-    key: 'todos',   // Note: Do not use underscore("_") in key!
-    id: 10003,
-    rawData: {'id': 10003, 'item': '写周、月、年度工作汇报', 'done': false},
-    expires: null
-});
-
-storage.save({
-    key: 'todos',   // Note: Do not use underscore("_") in key!
-    id: 10004,
-    rawData: {'id': 10005, 'item': '提交PSD文件到开发部门', 'done': false},
-    expires: null
-});
-*/
 
 const KEY_TODOS = 'todos';
 
 export default class TodoListView extends Component {
+
   constructor(props) {
     super(props);
+    this.dataSource = [];
     this.state = {
       'list': [],
       'submit': false,
@@ -80,23 +50,48 @@ export default class TodoListView extends Component {
           style={Style.inputBox}
           clearButtonMode = 'always'
           placeholder = '我该干点嘛呢?'
-          onSubmitEditing = {(event) => this._addItem(event)}
+          onSubmitEditing = {(event) => this._addTask(event)}
           onChangeText = {(text) => this.setState({'text': text, 'submit': false})} 
-          value = {val} />
+          value = {val}
+        />
         <UserSwipeListView 
           data = {this.state.list}
-          callbackParent = {this.removeItem.bind(self)}
+          callbackParent = {this.removeTask.bind(self)}
+          callbackComplete = {this.toggleTask.bind(self)}
         />
         <View style={Style.ft}>
-          <Text onPress={() => this._changeFilter(0)} style={this.state.filter === 0 ? Style.actived : Style.normal}>全部</Text>
-          <Text onPress={() => this._changeFilter(1)} style={this.state.filter === 1 ? Style.actived : Style.normal}>待办</Text>
-          <Text onPress={() => this._changeFilter(2)} style={this.state.filter === 2 ? Style.actived : Style.normal}>已完成</Text>
+          <Text 
+            onPress={() => this._filterData(0)}
+            style={this.state.filter === 0 ? Style.actived : Style.normal}>全部
+          </Text>
+          <Text
+            onPress={() => this._filterData(1)}
+            style={this.state.filter === 1 ? Style.actived : Style.normal}>
+            待办
+          </Text>
+          <Text
+            onPress={() => this._filterData(2)}
+            style={this.state.filter === 2 ? Style.actived : Style.normal}>
+            已完成
+          </Text>
         </View>
       </View>
     )
   }
   
-  removeItem(itemId) {
+  toggleTask(data) {
+    var done = !data.done;
+    data.done = done;
+    storage.save({
+      key: KEY_TODOS,
+      id: data.id,
+      rawData: data,
+      expires: null
+    });
+    this._asyncData();
+  }
+  
+  removeTask(itemId) {
     storage.remove({
       key: KEY_TODOS,
       id: itemId
@@ -104,22 +99,23 @@ export default class TodoListView extends Component {
     this._asyncData();
   }
   
-  _addItem(event) {
+  _addTask(event) {
     let curVal = event.nativeEvent.text,
         timestamp = +new Date()
         newItem = {'id': timestamp,'item': curVal, 'done': false};
-    this.data.unshift(newItem);
+    //this.data.unshift(newItem);
     this.setState({'submit': true});
     storage.save({
-      key: KEY_TODOS,   // Note: Do not use underscore("_") in key!
+      key: KEY_TODOS,
       id: timestamp,
       rawData: newItem,
       expires: null
     });
+    this._asyncData();
   }
   
-  _changeFilter(type) {
-    var data = this.data,
+  _filterData(type) {
+    var data = this.dataSource,
         _data = [];
     if (type === 0) {
       _data = data;
@@ -134,10 +130,8 @@ export default class TodoListView extends Component {
   
   _asyncData() {
     storage.getAllDataForKey('todos').then(ret => {
-      if (ret.length) {
-        this.data = ret.reverse();
-        this.setState({'list': ret});
-      }
+      this.dataSource = ret.reverse();
+      this._filterData(this.state.filter);
     });
   }
   
@@ -154,7 +148,13 @@ class UserSwipeListView extends Component {
         dataSource={ds.cloneWithRows(this.props.data)}
         renderRow={ data => (
           <View style={styles.rowFront}>
-              <Icon name="rocket" size={20} color="#900" />
+              <Icon
+                name="ios-checkmark-circle-outline"
+                size={20}
+                color={data.done ? '#59c3af' : '#dee0de'}
+                style={{marginRight: 10}}
+                onPress = {() => this.props.callbackComplete(data)}
+              />
               <Text>{data.item}</Text>
           </View>
         )}
@@ -179,7 +179,6 @@ class UserSwipeListView extends Component {
 	
 }
 
-/*
 class ItemListView extends Component {
   constructor(props) {
     super(props);
@@ -197,12 +196,22 @@ class ItemListView extends Component {
         enableEmptySections = {true}
         style = {Style.listBox}
         dataSource={this.state.dataSource}
-        renderRow={(rowData) => <View style={Style.rowItem}><Text>{rowData.item}</Text></View>} />
+        renderRow={(data) => (
+          <View style={Style.rowItem}>
+            <Icon
+              name="ios-checkmark-circle-outline"
+              size={20}
+              color={data.done ? '#59c3af' : '#dee0de'}
+              style={{marginRight: 10}}
+              onPress = {() => this.props.callbackComplete(data)}
+            />
+            <Text>{data.item}</Text>
+          </View>)
+        } />
       </View>
     );
   }
 }
-*/
 
 const styles = StyleSheet.create({
 	container: {
@@ -237,7 +246,7 @@ const styles = StyleSheet.create({
 		borderBottomWidth: 1,
     justifyContent: 'flex-start',
 		height: 40,
-		paddingLeft: 10,
+		paddingLeft: 3,
 		flex: 1,
 		flexDirection: 'row'
 	},

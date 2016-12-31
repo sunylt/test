@@ -1,8 +1,7 @@
 import React, { Component } from 'react';
 import {
   AppRegistry,
-  View,
-  Text
+  View
 } from 'react-native';
 
 import AppHeader from './assets/views/header';
